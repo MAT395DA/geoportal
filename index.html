@@ -1,0 +1,1800 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Geoportal Riesgos Naturales - Puntos Críticos</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    /* ===========================================
+       SECCIÓN 1: ESTILOS GENERALES
+    =========================================== */
+    
+	/* Personaliza el checkbox marcado en naranja */
+	input[type="checkbox"] {
+	  appearance: none;
+	  -webkit-appearance: none;
+	  width: 16px;
+	  height: 16px;
+	  border: 2px solid #ccc;
+	  border-radius: 4px;
+	  background-color: #fff;
+	  cursor: pointer;
+	  position: relative;
+	  vertical-align: middle;
+	}
+
+	input[type="checkbox"]:checked {
+	  background-color: #f97316; /* naranja */
+	  border-color: #f97316;
+	}
+
+	input[type="checkbox"]:checked::after {
+	  content: '✔';
+	  color: #fff;
+	  font-size: 12px;
+	  position: absolute;
+	  top: -2px;
+	  left: 2px;
+	}
+		
+	
+	body { 
+      margin: 0; 
+      height: 100vh; 
+      display: flex; 
+      font-family: 'Inter', sans-serif; 
+    }
+    
+    #sidebar { 
+      width: 300px; 
+      background: #2d2d2d; 
+      color: #fff; 
+      padding: 1rem; 
+      overflow: auto; 
+    }
+    
+    #map { 
+      flex: 1; 
+      position: relative; 
+    }
+    
+    h1 { 
+      margin: 0 0 1rem; 
+      font-size: 1.5rem; 
+      color: #fff; 
+    }
+    
+    button { 
+      width: 100%; 
+      margin-top: 0.5rem; 
+      padding: 0.75rem; 
+      border: none; 
+      border-radius: 6px; 
+      cursor: pointer; 
+      background: #f97316; 
+      color: #fff; 
+      transition: background 0.3s; 
+    }
+    
+    button:hover { 
+      background: #fb923c; 
+    }
+    
+    details { 
+      margin-top: 0.5rem; 
+    }
+    
+    summary { 
+      cursor: pointer; 
+      font-weight: bold; 
+    }
+    
+    .layer-item { 
+      display: flex; 
+      align-items: center; 
+      margin: 0.25rem 0; 
+    }
+    
+    .layer-item input { 
+      margin-right: 0.5rem; 
+    }
+    
+    .layer-item .icon { 
+      margin-right: 0.5rem; 
+    }
+    
+    .layer-item label { 
+      color: #fff; 
+      flex: 1; 
+    }
+    
+    .legend { 
+      position: absolute; 
+      bottom: 10px; 
+      right: 10px; 
+      z-index: 1000; 
+      background: #fff; 
+      padding: 8px; 
+      border-radius: 6px; 
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3); 
+      max-height: 200px; 
+      overflow: auto; 
+      font-size: 0.9rem; 
+      line-height: 1.4; 
+      display: none; 
+    }
+    
+    .legend-item { 
+      display: flex; 
+      align-items: center; 
+      margin-bottom: 4px; 
+    }
+    
+    .legend-color { 
+      width: 12px; 
+      height: 12px; 
+      margin-right: 6px; 
+      border: 1px solid #000; 
+    }
+    
+    .leaflet-popup-content table { 
+      border-collapse: collapse; 
+      width: 100%; 
+    }
+    
+    .leaflet-popup-content th, 
+    .leaflet-popup-content td { 
+      border: 1px solid #ddd; 
+      padding: 4px; 
+    }
+	
+	#modalAcercaDe {
+	  display: none;
+	  position: fixed;
+	  top: 0; left: 0;
+	  width: 100%; height: 100%;
+	  background-color: rgba(0, 0, 0, 0.4);
+	  z-index: 2000;
+	}
+
+	#modalAcercaDe .contenido {
+	  background: white;
+	  width: 90%;
+	  max-width: 500px;
+	  margin: 5% auto;
+	  padding: 24px 32px;
+	  border-radius: 16px;
+	  position: relative;
+	  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+	  font-family: sans-serif;
+	}
+
+	#modalAcercaDe h2 {
+	  font-size: 1.25rem;
+	  font-weight: bold;
+	  margin-bottom: 0.8rem;
+	  display: flex;
+	  align-items: center;
+	  gap: 0.4rem;
+	}
+
+	#modalAcercaDe h3 {
+	  font-size: 1rem;
+	  margin-top: 1.2rem;
+	  margin-bottom: 0.4rem;
+	  display: flex;
+	  align-items: center;
+	  gap: 0.4rem;
+	}
+
+	#modalAcercaDe p {
+	  font-size: 0.95rem;
+	  line-height: 1.4rem;
+	  color: #374151;
+	}
+
+	#modalAcercaDe ul {
+	  padding-left: 1rem;
+	  font-size: 0.9rem;
+	  color: #1f2937;
+	}
+
+	#modalAcercaDe button.cerrarBoton {
+	  background-color: #2563eb;
+	  color: white;
+	  border: none;
+	  padding: 8px 16px;
+	  border-radius: 8px;
+	  font-size: 0.9rem;
+	  cursor: pointer;
+	  transition: background-color 0.2s ease-in-out;
+	}
+
+	#modalAcercaDe button.cerrarBoton:hover {
+	  background-color: #1d4ed8;
+	}
+	   
+    /* ===========================================
+       SECCIÓN 2: ESTILOS DEL MODAL
+    =========================================== */
+    #reportModal { 
+      display: none; 
+      position: fixed; 
+      top: 0; 
+      left: 0; 
+      width: 100%; 
+      height: 100%; 
+      background: rgba(0,0,0,0.5); 
+      align-items: center; 
+      justify-content: center; 
+      z-index: 2000; 
+    }
+    
+    #reportModal .modal-content { 
+      background: #fff; 
+      padding: 2rem; 
+      border-radius: 12px; 
+      width: 95%; 
+      max-width: 480px;
+	  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+	  overflow-wrap: break-word;
+	  box-sizing: border-box;
+	  overflow-wrap: break-word;
+	  word-break: break-word;	  
+    }
+    
+    #reportModal h2 { 
+      margin-top: 0; 
+    }
+    
+    #reportForm div { 
+      margin-bottom: 1.25rem; 
+    }
+    
+    #reportForm label { 
+      font-weight: bold; 
+      display: block; 
+      margin-bottom: 0.25rem; 
+    }
+    
+	#reportForm input,
+	#reportForm textarea,
+	#reportForm select {
+		width: 100%;
+		padding: 0.75rem 1rem;
+		border: 1px solid #ccc;
+		border-radius: 8px;
+		font-size: 1rem;
+		background: #f9f9f9;
+		transition: border-color 0.3s ease;
+		box-sizing: border-box;
+	}
+
+	#reportForm input:focus,
+	#reportForm textarea:focus,
+	#reportForm select:focus {
+		outline: none;
+		border-color: #f97316;
+		background: #fff;
+	}
+    
+    #reportActions { 
+      text-align: right; 
+    }
+    
+    #reportActions button {
+    padding: 0.6rem 1.2rem;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    font-size: 0.95rem;
+    transition: background 0.3s ease;
+	}
+
+	#reportActions button:hover {
+		opacity: 0.9;
+	}
+  </style>
+</head>
+<body>
+  <div id="sidebar">
+    <h1 style="color: #f97316; font-size: 1.7rem; font-weight: 700; margin-bottom: 1.5rem;">
+    Geoportal: <span style="color: #fff;">AZUAY</span>
+    </h1>
+	
+	<!-- SECCIÓN 1: Capas de Información -->
+    <details open>
+      <summary>Capas de información</summary>
+      <div id="layersList"></div>
+    </details>
+	
+	<div style="margin-top: 1rem;">
+  	  <button id="btnUpdate" class="boton">Actualizar Mapa</button>
+	  <button id="clearUI" class="boton">Limpiar</button>
+	</div>
+	
+	<!-- SECCIÓN 2: Filtro de Información -->
+	<div style="margin-top: 1rem;">
+      <h3 style="font-size: 1rem; margin-bottom: 0.5rem;">Filtro de Información</h3>
+	
+	  <label for="filtroCanton" style="color:white;">Cantón:</label>
+      <select id="filtroCanton" style="width:100%; padding:0.5rem; border-radius:6px; border:none; font-size:0.9rem; margin-bottom: 0.5rem;">
+        <option value="">-- Mostrar todos --</option>
+      </select>
+	
+	  <label for="filtroCapa" style="color:white;">Capa de Información:</label>
+      <select id="filtroCapa" style="width:100%; padding:0.5rem; border-radius:6px; border:none; font-size:0.9rem;">
+        <option value="">-- Todas las capas --</option>
+      </select>
+	  
+	  <button id="btnFiltro" class="boton">Aplicar Filtro</button>
+    </div>
+	
+	<!-- SECCIÓN: Herramientas -->
+	<div style="margin-top: 2rem;">
+      <h3 style="font-size: 1rem; margin-bottom: 0.5rem;">Reporte de Usuario</h3>
+      <button id="btnReport" class="boton">Reportar evento</button>
+    </div>
+	<div style="margin-top: 1.5rem;">
+	  <h3 style="font-size: 1rem; margin-bottom: 0.5rem;">Resumen de Alertas</h3>
+	  <button id="btnResumenAlertas" class="boton" style="background-color:#1e3a8a;">🔍 Ver resumen en pantalla</button>
+	  <button id="btnGenerarPDF" class="boton" style="background-color:#059669;">📄 Descargar resumen en PDF</button>
+	</div>
+	
+  </div>
+  
+  <div id="map">
+    <div class="legend"></div>
+  </div>
+  
+  <div id="reportModal">
+    <div class="modal-content">
+      <h2 style="
+	  font-size: 24px;
+	  font-weight: bold;
+	  text-align: center;
+	  color: #1e293b; /* gris oscuro azulado */
+	  border-bottom: 3px solid #6b7280;
+	  padding-bottom: 10px;
+	  margin-bottom: 20px;
+	  font-family: 'Segoe UI', sans-serif;
+	  ">
+	    REPORTE DE USUARIO
+	  </h2>
+      <p>Haga clic en el mapa para indicar la ubicación del incidente.</p>
+      <form id="reportForm">
+        <input type="hidden" id="reportLat" />
+        <input type="hidden" id="reportLng" />
+        <div>
+          <label for="reportTipo">Tipo de Incidente</label>
+          <select id="reportTipo" required>
+			  <option value="Vía dañada">Problema Vial</option>
+			  <option value="Susceptible a inundación">Inundación</option>
+			  <option value="Deslizamiento / movimiento de masa">Deslizamiento</option>
+			  <option value="Falla geológica visible">Falla Geológica</option>
+			  <option value="Otros">Otros</option>
+		  </select>
+        </div>
+        <div id="otrosDiv" style="display:none;">
+          <label for="reportOtros">Especificar Otros</label>
+          <input type="text" id="reportOtros" />
+        </div>
+        <div>
+          <label for="reportGravedad">Severidad del problema</label>
+          <small style="display:block; color:#6b7280; margin-bottom:0.3rem;">
+		   Leve / Moderada / Notoria / Grave / Muy grave
+		</small>
+		<select id="reportGravedad" required>
+		  <option value="1">Leve (inconveniente menor)</option>
+		  <option value="2">Moderada (requiere atención)</option>
+		  <option value="3">Notoria (afecta a varias personas)</option>
+		  <option value="4">Grave (riesgo directo)</option>
+		  <option value="5">Muy grave (emergencia crítica)</option>
+        </select>
+        </div>
+        <div>
+          <label for="reportBuffer">Área afectada</label>
+		  <small style="display:block; color:#6b7280; margin-bottom:0.3rem;">
+		    Puntual / Local / Zonal / Macro
+		  </small>
+		  <select id="reportBuffer" required>
+		    <option value="0">Puntual (evento localizado)</option>
+		    <option value="10">Local (Menos de 10m a la redonda)</option>
+		    <option value="50">Zonal (entre 10m y 100m a la redonda)</option>
+		    <option value="200">Macro (Área extensa &gt; 100m a la redonda)</option>
+		  </select>
+        </div>
+        <div>
+          <label for="reportContacto">Contacto (Nombre / email)</label>
+          <input type="text" id="reportContacto" />
+        </div>
+        <div>
+          <label for="reportDescripcion">Descripción del Problema</label>
+          <textarea id="reportDescripcion" rows="4" required style="resize: none;"></textarea>
+        </div>
+        <div id="reportActions">
+          <button type="button" id="cancelReport" style="background:#6b7280; color:white;">Cancelar</button>
+          <button type="submit" style="background:#f97316; color:white;">Enviar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+	
+	<!-- Botón Acerca de en esquina superior derecha -->
+	<div style="position: absolute; top: 10px; right: 10px; z-index: 1000;">
+	  <button onclick="mostrarAcercaDe()" style="background-color: #2563eb; color: white; border: none; padding: 4px 10px; border-radius: 6px; font-size: 11px;">
+		ℹ️ Acerca de
+	  </button>
+	</div>
+
+
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+  <script>
+    // ===========================================
+    // SECCIÓN 3: CONFIGURACIÓN Y CONSTANTES
+    // ===========================================
+    
+    // Configuración de la API
+    const URL = 'https://rxawhlfmqibrpwunvtgx.supabase.co';
+    const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ4YXdobGZtcWlicnB3dW52dGd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2MzgwMDgsImV4cCI6MjA2ODIxNDAwOH0.q1yQt-vbB5GjeyRCwgNS_rZU2B5zC7K2uVuBWtbmXqs';
+    
+    // Colores para las capas
+    const COLORS = ['#ff6633', '#33cc33', '#3366ff', '#ff33cc', '#ccff33', '#33ffff'];
+    
+    // Alias para nombres de tablas
+    const ALIAS = {
+      microcuencas: "Microcuencas",
+      suscep_desliz: "Susceptibilidad a Deslizamientos",
+      macrodeslizamientos: "Macrodeslizamientos",
+      suscep_inundaciones: "Susceptibilidad a Inundaciones",
+      reportes_usuario: "Reportes de Usuario",
+      cab_parroquial: "Cabecera Parroquial",
+      cab_cantonal: "Cabecera Cantonal",
+      falla_geologica: "Falla Geológica",
+      centro_poblado: "Centro Poblado",
+      puntos_criticos: "Puntos Críticos",
+      lim_cantonal: "Límite Cantonal",
+      cuencas: "Cuencas"
+    };
+    
+    // Iconos para las capas
+    const ICONS = {
+      microcuencas: "🌊", 
+      suscep_desliz: "⚠️", 
+      macrodeslizamientos: "⛰️", 
+      suscep_inundaciones: "💧",
+      reportes_usuario: "📋", 
+      cab_parroquial: "🏠", 
+      cab_cantonal: "🏛", 
+      falla_geologica: "🗺️",
+      centro_poblado: "🏘", 
+      puntos_criticos: "📍", 
+      lim_cantonal: "📐", 
+      cuencas: "🔵"
+    };
+	
+	// Descripciones informativas por capa
+	const INFO_CAPAS = {
+	  microcuencas: "Contiene información de las microcuencas mapeadas dentro de la provincia del Azuay, contiene información como: red principal y secundaria que aporta a la microcuenca, su forma, perímetro, área, etc.",
+	  suscep_desliz: "Contiene poligonos (área y perimetro) que han sido clasificados como zonas de alta, media o baja susceptibilidad a movimientos de masa.",
+	  macrodeslizamientos: "Contiene registros históricos de deslizamientos considerables, y las afecciones reportadas durante su ocurrencia.",
+	  suscep_inundaciones: "Contiene la delimitación y evaluación de la susceptibilidad a inundaciones en varias zonas al interior de la Provincia del Azuay, además de presentar información general como: área, perímero y pendiente en la zona delimitada.",
+	  reportes_usuario: "Contiene una lista de eventos reportados por usuarios como deslizamientos, fallas, etc., su grado de severidad, área de afección y descripción general del problema",
+	  cab_parroquial: "Contiene la ubicación de las cabeceras parroquiales de la provincia del Azuya, además datos censales de la población concetrada en dicha zona.",
+	  cab_cantonal: "Contiene la ubicación de las cabeceras cantonales de la provincia del Azuay, adempas de datos censales de la población de hombres, mujeres y totales, en dicha zona.",
+	  falla_geologica: "Contiene el trazado de ñas estructuras geológicas activas o potenciales, que han sido registradas dentro de la provincia del Azuay",
+	  centro_poblado: "Contiene puntos que representan a los centros urbanos y rurales, dentro de la provincia del Azuay, con el respectivo detalle del cantón y parroquia al que pertenecen",
+	  puntos_criticos: "Contiene información de sitios sensibles o críticos que han sido registrados por la prefectura, con el respectivo detalle geográfico y tipología de la amenaza reportada en dicho lugar",
+	  lim_cantonal: "Contiene la delimitación oficial de los cantones que pertenecen a la provincia del Azuay.",
+	  cuencas: "Contiene unidades hidrográficas de mayor maginitud, con información concerniente al sistema y vertiente que contiene la cuenca, además de su geometría"
+	};
+	
+	
+	
+    
+    // ===========================================
+    // SECCIÓN 4: CONFIGURACIÓN DE RENOMBRADO Y  COLUMNAS OCULTAS
+    // ===========================================
+    
+    // Columnas ocultas (no se mostrarán en popups)
+    const COLUMNAS_OCULTAS_GLOBALES = [
+      'geom', 'anio', 'indice_com', 'rango_crec', 'cod_microc', 'cod_subcue', 
+      'nombre_cue', 'srid', 'created_at', 'updated_at', 'poburbphom', 'poburbpmuj', 
+      'poburbtot', 'pobrurhom', 'pobrurphom', 'pobrurmuj', 'pobrurpmuj', 'poburtot', 
+      'pobtotpmuj', 'pobtotpm_1', 'pobtotpmuj', 'pobtotpm', 'poburp', 'pobtopmuj', 
+      'pobtopm', 'poburp', 'poburp', 'poburbhom', 'poburbmuj', 'pobrurtot', 'entidad', 
+      'cod_sist', 'fnode_', 'tnode_', 'lpoly_', 'rpoly_', 'length', 'fallas_', 
+      'fallas_id', 'fgiron_', 'fgiron_id', 'falla', 'guallet_', 'guallet_id', 
+      'falaus_', 'falaus_id', 'fallas', 'ftenguel_', 'ftenguel_i', 'fnaranj_', 
+      'fnaranj_id', 'fmachal_', 'fmachal_id', 'nombre', 'fid_geo_13'
+    ];
+    
+	   // Configuración de columnas ocultas POR CAPA (personalizable)
+    const COLUMNAS_OCULTAS_POR_CAPA = {
+      // Tabla: microcuencas - Oculta las columnas que no necesites
+      microcuencas: [
+        'longitud_', 'indice_com', 'rango_crec', 'cod_cuenca', 'cod_subcue', 'geom'
+        // Agrega aquí las columnas que quieras ocultar para microcuencas
+      ],
+      
+      // Tabla: suscep_desliz - Oculta las columnas que no necesites
+      suscep_desliz: [
+		'geom'
+        // Agrega aquí las columnas que quieras ocultar para susceptibilidad a deslizamientos
+      ],
+      
+      // Tabla: macrodeslizamientos - Oculta las columnas que no necesites
+      macrodeslizamientos: [
+		'numero', 'geom'
+        // Agrega aquí las columnas que quieras ocultar para macrodeslizamientos
+      ],
+      
+      // Tabla: suscep_inundaciones - Oculta las columnas que no necesites
+      suscep_inundaciones: [
+		'fcode', 'txt', 'geom'
+        // Agrega aquí las columnas que quieras ocultar para susceptibilidad a inundaciones
+      ],
+      
+      // Tabla: reportes_usuario - Oculta las columnas que no necesites
+      reportes_usuario: [
+		'id', 'usuario_id', 'geom', 'buffer_geom', 'fecha_reporte', 'visibilidad'
+        // Agrega aquí las columnas que quieras ocultar para reportes de usuario
+      ],
+      
+      // Tabla: cab_parroquial - Oculta las columnas que no necesites
+      cab_parroquial: [
+        'pobrurphom', 'pobrurpmuj', 'geom'
+        // Agrega aquí más columnas que quieras ocultar para cabecera parroquial
+      ],
+      
+      // Tabla: cab_cantonal - Oculta las columnas que no necesites
+      cab_cantonal: [
+        'poburbhom','poburbphom','poburbmuj','poburbpmuj', 'poburptot', 'pobrurhom','pobrurphom','pobrurmuj','pobrurpmuj','pobrurtot','pobtotpmuj','pobtotpm_1', 'geom'
+        // Agrega aqu铆 las columnas que quieras ocultar para cabecera cantonal
+      ],
+      
+      // Tabla: falla_geologica - Oculta las columnas que no necesites
+      falla_geologica: [
+        'fid_fallas', 'descripcio', 'fnode_', 'tnode_', 'lpoly_', 'rpoly_', 'length', 'fallas_', 'fallas_id', 'fgiron_', 'fgiron_id', 'falla', 'guallet', 'guallet_id', 'falaus_', 'falaus_id', 'fallas', 'ftenguel_', 'ftenguel_i', 'fnaranj_', 'fnaranj_id', 'fmachal_', 'fmachal_id', 'nombre', 'fid_geo_13', 'geom'
+        // Agrega aquí las columnas que quieras ocultar para falla geológica
+      ],
+      
+      // Tabla: centro_poblado - Oculta las columnas que no necesites
+      centro_poblado: [
+        'nro.', 'entidad', 'geom'
+        // Agrega aquí las columnas que quieras ocultar para centro poblado
+      ],
+      
+      // Tabla: puntos_criticos - Oculta las columnas que no necesites
+      puntos_criticos: [
+	   'anio', 'geom'
+        // Agrega aquí las columnas que quieras ocultar para puntos críticos
+      ],
+      
+      // Tabla: lim_cantonal - Oculta las columnas que no necesites
+      lim_cantonal: [
+	  'id', 'fcode', 'dpa_provin', 'dpa_despro', 'dpa_anio', 'geom'
+        // Agrega aquí las columnas que quieras ocultar para límite cantonal
+      ],
+      
+      // Tabla: cuencas - Oculta las columnas que no necesites
+      cuencas: [
+	   'cod_sist', 'geom'
+        // Agrega aquí las columnas que quieras ocultar para cuencas
+      ]
+    };
+	
+	
+	
+    // Configuración personalizable de renombrado de columnas por tabla
+    const RENOMBRAR_COLUMNAS = {
+      // Tabla: microcuencas
+      microcuencas: {
+        gid: 'ID',
+		nombre_cue: 'CUENCA',
+		nombre_sub: 'SUBCUENCA',
+		nombre_mic: 'MICROCUENCA',
+		forma_unid: 'FORMA',
+        tendencia_: 'TENDENCIA',
+        perimetro_: 'PERIMETRO',
+        rango_form: 'RANGO FORM.',
+		cod_microc: 'CÓDIGO',
+        area_kmc: 'ÁREA (km2)'
+      },
+      
+      // Tabla: suscep_desliz
+      suscep_desliz: {
+        gid: 'ID',
+        descripcio: 'DESCRIPCIÓN',
+        perimetro: 'PERÍMETRO',
+        area: 'ÁREA'
+      },
+      
+      // Tabla: macrodeslizamientos
+      macrodeslizamientos: {
+        gid: 'ID',
+        tip_desliz: 'TIPO',
+        canton: 'CANTÓN',
+        parroquia: 'PARROQUIA',
+		sector: 'SECTOR',
+		x: 'ESTE',
+		y: 'NORTE',
+		z: 'ELEVACIÓN',
+		afecciones: 'DESCRIPCIÓN'
+      },
+      
+      // Tabla: suscep_inundaciones
+      suscep_inundaciones: {
+        gid: 'ID',
+        susce_inun: 'SUSCEPTIBILIDAD',
+		pendiente: 'PENDIENTE',
+        textura: 'TEXTURA',
+        descripcio: 'DESCRIPCIÓN',
+		perimetro: 'PERÍMETRO',
+		area: 'ÁREA'
+      },
+      
+      // Tabla: reportes_usuario
+      reportes_usuario: {
+        tipo_incidente: 'TIPO',
+        gravedad: 'SEVERIDAD',
+        contacto: 'CONTACTO',
+        //buffer_radius: 'ÁREA AFECTADA',
+		descripcion: 'DESCRIPCIÓN',
+		estado: 'ESTADO'
+      },
+      
+      // Tabla: cab_parroquial
+      cab_parroquial: {
+        gid: 'ID',
+        dpa_nombre: 'PARROQUIA',
+        codparr: 'CÓDIGO',
+        pobrurhom: 'HOMBRES_C',
+        pobrurmuj: 'MUJERES_C',
+        pobrurtota: 'TOTAL_C',
+        x: 'ESTE',
+        y: 'NORTE'
+      },
+      
+      // Tabla: cab_cantonal
+      cab_cantonal: {
+		gid: 'ID',
+        nomblocali: 'CANTÓN',
+        codcant: 'CÓDIGO',
+        pobtothom: 'HOMBRES',
+        pobtotmuj: 'MUJERES',
+        pobtotal: 'TOTAL'
+      },
+      
+      // Tabla: falla_geologica
+      falla_geologica: {
+		gid: 'ID',
+        descripci: 'DETALLE',
+        tipo: 'TIPO',
+        angulo: 'ÁNGULO',
+        forma: 'FORMACIÓN',
+        desri: 'DESCRIPCIÓN',
+        code: 'SÍMBOLO'
+      },
+      
+      // Tabla: centro_poblado
+      centro_poblado: {
+        gid: 'ID',
+        provincia: 'PROVINCIA',
+		canton: 'CANTÓN',
+		parroquia: 'PARROQUIA',
+        poblado: 'POBLADO',
+        x: 'ESTE',
+        y: 'NORTE',
+      },
+      
+      // Tabla: puntos_criticos
+      puntos_criticos: {
+        gid: 'ID',
+        tipo: 'TIPO',
+        canton: 'CANTÓN',
+        parroquia: 'PARROQUIA',
+        longi: 'ESTE',
+		lat: 'NORTE'
+      },
+      
+      // Tabla: lim_cantonal
+      lim_cantonal: {
+        gid: 'ID',
+		dpa_canton: 'CÓDIGO',
+        dpa_descan: 'CANTÓN',
+        ar_km2: 'ÁREA'
+      },
+      
+      // Tabla: cuencas
+      cuencas: {
+        gid: 'ID',
+		cod_cuenc: 'CÓDIGO',
+        cuenca: 'CUENCA',
+        sistema: 'SISTEMA',
+        vertiente: 'VERTIENTE',
+        area: 'ÁREA',
+        perimetro: 'PERÍMETRO'
+      }
+    };
+    
+    // ===========================================
+    // SECCIÓN 5: VARIABLES GLOBALES
+    // ===========================================
+    
+    let map, featureGroup, reportLatLng;
+	let cantonSeleccionado = null;
+    let geometriaCanton = null;
+    
+    
+    // ===========================================
+    // SECCIÓN 6: INICIALIZACIÓN DEL MAPA
+    // ===========================================
+    
+    function initMap() {
+      map = L.map('map').setView([-2.85, -78.65], 10);
+      
+      // Crear paneles personalizados para control de z-index
+      map.createPane('polygonPane');
+      map.getPane('polygonPane').style.zIndex = 400;
+      map.createPane('markerPane');
+      map.getPane('markerPane').style.zIndex = 650;
+      
+      // Agregar capa base
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: 'OpenStreetMap'
+      }).addTo(map);
+      
+      // Crear grupo de características
+      featureGroup = L.featureGroup().addTo(map);
+    }
+    
+    // ===========================================
+    // SECCIÓN 7: GESTIÓN DE TABLAS Y CAPAS
+    // ===========================================
+    
+	async function listarTablas() {
+	  const listDiv = document.getElementById('layersList');
+	  const selectFiltro = document.getElementById('filtroCapa');
+
+	  listDiv.innerHTML = '';
+	  selectFiltro.innerHTML = '<option value="">-- Todas las capas --</option>';
+
+	  // Lista estática de capas conocidas
+	  const tables = [
+		'microcuencas', 'suscep_desliz', 'macrodeslizamientos', 'suscep_inundaciones',
+		'reportes_usuario', 'cab_parroquial', 'cab_cantonal', 'falla_geologica',
+		'centro_poblado', 'puntos_criticos', 'lim_cantonal', 'cuencas'
+	  ];
+
+	  tables
+		.filter(t => !['puentes', 'alcantarillas', 'spatial_ref_sys'].includes(t)) // permitimos mostrar lim_cantonal y microcuencas
+		.forEach(t => {
+		  const div = document.createElement('div');
+		  div.className = 'layer-item';
+		  
+		  // Botón de información
+		  const infoBtn = document.createElement('span');
+		  infoBtn.textContent = "(i)";
+		  infoBtn.style.cursor = "pointer";
+		  infoBtn.style.marginRight = "0.5rem";
+		  infoBtn.style.color = "#60a5fa";
+		  infoBtn.title = "Haz clic para ver información";
+		  infoBtn.onclick = () => {
+			alert(INFO_CAPAS[t] || "Información no disponible");
+		  };
+		  
+		  // Checkbox
+		  const cb = document.createElement('input');
+		  cb.type = 'checkbox';
+		  cb.id = `chk_${t}`;
+		  cb.value = t;
+		  cb.style.marginRight = "0.5rem";
+
+		  // Icono
+		  const icon = document.createElement('span');
+		  icon.className = 'icon';
+		  icon.textContent = ICONS[t] || '🗺️';
+		  icon.style.marginRight = "0.5rem";
+
+		  // Etiqueta (texto de la capa)
+		  const lbl = document.createElement('label');
+		  lbl.htmlFor = cb.id;
+		  lbl.textContent = ALIAS[t] || t;
+		  
+		  // Orden: info, checkbox, icono, etiqueta
+		  div.append(infoBtn, cb, icon, lbl);
+		  listDiv.appendChild(div);
+
+		  // 🔵 Añadir al filtro solo si NO es lim_cantonal NI microcuencas
+		  if (!['lim_cantonal', 'microcuencas', 'cuencas'].includes(t)) {
+			const opt = document.createElement('option');
+			opt.value = t;
+			opt.textContent = ALIAS[t] || t;
+			selectFiltro.appendChild(opt);
+		  }
+		});
+	}
+    // ===========================================
+    // SECCIÓN 8: ACTUALIZACIÓN DE CAPAS
+    // ===========================================
+    
+	async function updateLayers() {
+	try {
+		// ... código existente ...
+		  featureGroup.clearLayers();
+		  const legendDiv = document.querySelector('.legend');
+		  legendDiv.innerHTML = '';
+		  
+		  const checks = document.querySelectorAll('#layersList input:checked');
+		  let idx = 0;
+		  
+		  for (const cb of checks) {
+			const t = cb.value;
+			
+			// Obtener datos de la tabla
+			const data = await (await fetch(`${URL}/rest/v1/${t}?select=*,geom:geom`, {
+			  headers: {
+				'apikey': KEY,
+				'Authorization': `Bearer ${KEY}`
+			  }
+			})).json();
+			
+			const color = COLORS[idx % COLORS.length];
+			idx++;
+			
+			// Crear capa GeoJSON
+			const layer = L.geoJSON(data.map(f => ({
+			  type: 'Feature',
+			  properties: f,
+			  geometry: f.geom
+			})), {
+			  pane: 'polygonPane',
+			  style: {
+				color: color,
+				weight: 2,
+				fillOpacity: 0.2
+			  },
+			  pointToLayer: (feat, latlng) => L.circleMarker(latlng, {
+				radius: 6,
+				fillColor: color,
+				color: '#000',
+				weight: 1,
+				fillOpacity: 0.8,
+				pane: 'markerPane'
+			  }),
+			  onEachFeature: (feat, lyr) => {
+				const html = generarPopupHTML(feat.properties, t);
+				lyr.bindPopup(html);
+			  }
+			}).addTo(featureGroup);
+			
+			// Traer marcadores al frente
+			layer.eachLayer(l => {
+			  if (l instanceof L.CircleMarker) l.bringToFront();
+			});
+			
+			// Agregar elemento a la leyenda
+			agregarElementoLeyenda(legendDiv, color, t);
+		  }
+		  
+		  // Mostrar leyenda y ajustar vista
+		  if (checks.length) {
+			legendDiv.style.display = 'block';
+			map.fitBounds(featureGroup.getBounds());
+		  } else {
+			legendDiv.style.display = 'none';
+			map.setView([-2.85, -78.65], 10);
+		  }
+		  
+		  mostrarNotificacionGeneral("✅ Mapa actualizado", "#2563eb"); 
+		  
+	  } catch (error) {
+		console.error(`Error cargando capa ${t}:`, error);
+		alert(`Error cargando la capa ${ALIAS[t] || t}`);
+	  }
+	}
+	
+	
+    // ===========================================
+    // SECCIÓN 9: GENERACIÓN DE POPUPS
+    // ===========================================
+    
+    function generarPopupHTML(properties, tabla) {
+      let html = `<strong>${ALIAS[tabla] || tabla}</strong><br><table>`;
+      
+      const renombrarConfig = RENOMBRAR_COLUMNAS[tabla] || {};
+	  const columnasOcultasCapa = COLUMNAS_OCULTAS_POR_CAPA[tabla] || [];
+      
+	// Combinar columnas ocultas globales con las específicas de la capa
+      const todasColumnasOcultas = [...COLUMNAS_OCULTAS_GLOBALES, ...columnasOcultasCapa];
+	  
+	  
+      for (const key in properties) {
+	    // Verificar si la columna debe ocultarse
+        if (!todasColumnasOcultas.includes(key)) {
+          let etiqueta = renombrarConfig[key] || key;
+          let valor = properties[key];
+ 
+		  
+
+		  // Mostrar etiquetas cualitativas para GRAVEDAD e INFLUENCIA
+		  if (tabla === 'reportes_usuario') {
+			if (key === 'gravedad') {
+			  const etiquetasGravedad = {
+				1: 'Leve (inconveniente menor)',
+				2: 'Moderada (requiere atención)',
+				3: 'Notoria (afecta a varias personas)',
+				4: 'Grave (riesgo directo)',
+				5: 'Muy grave (emergencia crítica)'
+			  };
+			  valor = etiquetasGravedad[valor] || valor;
+			}
+
+			if (key === 'buffer_radius') {
+			  etiqueta = 'AREA AFECTADA';
+			  const etiquetasInfluencia = {
+				0: 'Puntual (evento localizado)',
+				10: 'Local (menos de 10 m a la redonda)',
+				50: 'Zonal (entre 10 m y 100 m a la redonda)',
+				200: 'Macro (área extensa > 100 m a la redonda)'
+			  };
+				const valorNumerico = parseInt(valor, 10);
+				valor = etiquetasInfluencia[valorNumerico] || 'No especificado';
+			}
+
+			if (key === 'contacto') continue; // Ocultar campo de contacto
+			
+			// OMITIR 'otros_detalle' si está vacío o null
+			  if (key === 'otros_detalle') {
+				if (!valor || String(valor).trim() === '') continue;
+				etiqueta = 'DETALLE';
+			  }
+		  } 
+		  
+          // Formatear valores específicos
+          if (etiqueta.includes('ESTE') || etiqueta.includes('NORTE') || 
+              etiqueta.includes('ÁREA') || etiqueta.includes('PERÍMETRO')) {
+            valor = Math.round(parseFloat(valor));
+          }
+          
+          if (etiqueta.includes('HOMBRES_C')) {
+            valor = Math.round(parseFloat(valor) * 1000);
+          }
+		  if (etiqueta.includes('MUJERES_C')) {
+            valor = Math.round(parseFloat(valor) * 1000);
+          }
+		  if (etiqueta.includes('TOTAL_C')) {
+            valor = Math.round(parseFloat(valor) * 1000);
+          }
+          
+          html += `<tr><th>${etiqueta}</th><td>${valor}</td></tr>`;
+        }
+      }
+      
+      html += '</table>';
+      return html;
+    }
+    
+    // ===========================================
+    // SECCIÓN 10: GESTIÓN DE LEYENDA
+    // ===========================================
+    
+    function agregarElementoLeyenda(legendDiv, color, tabla) {
+      // Verificar si ya existe un elemento de leyenda para esta capa
+	  if (legendDiv.querySelector(`[data-layer="${tabla}"]`)) return;
+	  
+	  const item = document.createElement('div');
+      item.className = 'legend-item';
+	  item.dataset.layer = tabla;  // Etiqueta para evitar duplicados
+      
+      const sw = document.createElement('span');
+      sw.className = 'legend-color';
+      sw.style.background = color;
+      
+      const ll = document.createElement('span');
+      ll.textContent = ALIAS[tabla] || tabla;
+      
+      item.append(sw, ll);
+      legendDiv.appendChild(item);
+    }
+    
+    // ===========================================
+    // SECCIÓN 11: FUNCIONES DE UTILIDAD
+    // ===========================================
+    
+    function clearUI() {
+      featureGroup.clearLayers();
+      map.setView([-2.85, -78.65], 10);
+      
+      const legendDiv = document.querySelector('.legend');
+      legendDiv.style.display = 'none';
+      legendDiv.innerHTML = '';
+      
+      document.querySelectorAll('#layersList input').forEach(cb => cb.checked = false);
+	  
+	  // Restablecer selects del filtro
+	  document.getElementById('filtroCanton').value = '';
+	  document.getElementById('filtroCapa').value = '';
+    }
+	
+	function mostrarAcercaDe() {
+	  document.getElementById('modalAcercaDe').style.display = 'block';
+
+	  const ul = document.getElementById('reporteEstadistico');
+	  ul.innerHTML = '';
+	  let totalFilas = 0;
+
+	  Promise.all(
+		tablas.map(async (t) => {
+		  try {
+			const res = await fetch(`${URL}/rest/v1/${t}?select=*&limit=1`, {
+			  headers: { apikey: KEY, Authorization: `Bearer ${KEY}` }
+			});
+			const muestra = await res.json();
+			const columnas = muestra.length > 0 ? Object.keys(muestra[0]).length : 0;
+
+			const res2 = await fetch(`${URL}/rest/v1/${t}?select=id`, {
+			  headers: { apikey: KEY, Authorization: `Bearer ${KEY}` }
+			});
+			const datos = await res2.json();
+			const filas = datos.length;
+			totalFilas += filas;
+
+			const li = document.createElement('li');
+			li.textContent = `${t}: ${columnas} columnas | ${filas} registros`;
+			ul.appendChild(li);
+		  } catch (e) {
+			const li = document.createElement('li');
+			li.textContent = `${t}: error al obtener datos`;
+			ul.appendChild(li);
+		  }
+		})
+	  ).then(() => {
+		const resumen = document.createElement('li');
+		resumen.innerHTML = `<strong>Total de tablas:</strong> ${tablas.length} | <strong>Registros totales:</strong> ${totalFilas}`;
+		ul.prepend(resumen);
+	  });
+	}
+
+	function cerrarAcercaDe() {
+	  document.getElementById('modalAcercaDe').style.display = 'none';
+	}
+	
+	async function mostrarResumenAlertas() {
+	  const modal = document.getElementById('modalResumenAlertas');
+	  const lista = document.getElementById('contenidoResumen');
+	  lista.innerHTML = '<li>🔄 Cargando datos...</li>';
+	  modal.style.display = 'block';
+
+	  try {
+		const res = await fetch(`${URL}/rest/v1/reportes_usuario?select=estado`, {
+		  headers: { apikey: KEY, Authorization: `Bearer ${KEY}` }
+		});
+
+		const datos = await res.json();
+		const total = datos.length;
+		const pendientes = datos.filter(d => d.estado === 'pendiente').length;
+		const solventados = total - pendientes;
+
+		lista.innerHTML = `
+		  <li>📌 Total de reportes: <strong>${total}</strong></li>
+		  <li>🕒 Pendientes: <strong style="color:#dc2626;">${pendientes}</strong></li>
+		  <li>✅ Solventados: <strong style="color:#16a34a;">${solventados}</strong></li>
+		`;
+	  } catch (e) {
+		console.error("Error al obtener resumen de alertas:", e);
+		lista.innerHTML = '<li style="color:red;">❌ Error al cargar el resumen</li>';
+	  }
+	}
+	
+
+	function cargarImagenBase64(url, maxAncho = 200, maxAlto = 100) {
+	  return new Promise((resolve, reject) => {
+		const img = new Image();
+		img.crossOrigin = 'anonymous';
+		img.onload = function () {
+		  // Escalar imagen si es muy grande
+		  const ratio = Math.min(maxAncho / this.width, maxAlto / this.height, 1);
+		  const width = this.width * ratio;
+		  const height = this.height * ratio;
+
+		  const canvas = document.createElement('canvas');
+		  canvas.width = width;
+		  canvas.height = height;
+		  canvas.getContext('2d').drawImage(this, 0, 0, width, height);
+
+		  resolve(canvas.toDataURL('image/png', 0.7));  // calidad 70%
+		};
+		img.onerror = () => reject('Error al cargar imagen');
+		img.src = url;
+	  });
+	}
+
+	async function generarPDFResumen() {
+	  try {
+		const res = await fetch(`${URL}/rest/v1/reportes_usuario?select=tipo_incidente,estado`, {
+		  headers: { apikey: KEY, Authorization: `Bearer ${KEY}` }
+		});
+
+		const datos = await res.json();
+		const total = datos.length;
+		const pendientes = datos.filter(d => d.estado === 'pendiente').length;
+		const solventados = total - pendientes;
+
+		const tipoContador = {};
+		datos.forEach(d => {
+		  const tipo = d.tipo_incidente || 'Sin especificar';
+		  tipoContador[tipo] = (tipoContador[tipo] || 0) + 1;
+		});
+
+		const { jsPDF } = window.jspdf;
+		const doc = new jsPDF();
+
+		// Logo desde URL
+		const logoBase64 = await cargarImagenBase64("https://i.imgur.com/JQ0MIN5.png");
+		doc.addImage(logoBase64, 'PNG', 155, 10, 40, 20); // x, y, ancho, alto
+
+		// Título principal
+		doc.setFontSize(16);
+		doc.setTextColor(0);
+		doc.setFont("helvetica", "bold");
+		doc.text("Geoportal Azuay - Resumen de Reportes", 20, 25);
+
+		// Fecha
+		doc.setFontSize(11);
+		doc.setFont("helvetica", "normal");
+		doc.setTextColor(90);
+		doc.text(`Fecha de generación: ${new Date().toLocaleDateString()}`, 20, 32);
+
+		// Sección 1: resumen general
+		doc.setFontSize(12);
+		doc.setTextColor(0);
+		doc.setFont("helvetica", "bold");
+		doc.text("Resumen general", 20, 45);
+
+		doc.setFont("helvetica", "normal");
+		doc.setFontSize(11);
+		doc.text(`Total de reportes: ${total}`, 25, 53);
+		doc.text(`Pendientes: ${pendientes}`, 25, 60);
+		doc.text(`Solventados: ${solventados}`, 25, 67);
+
+		// Línea separadora
+		doc.setDrawColor(180);
+		doc.line(20, 73, 190, 73);
+
+		// Sección 2: por tipo de incidente
+		doc.setFontSize(12);
+		doc.setFont("helvetica", "bold");
+		doc.text("Distribución por tipo de incidente", 20, 83);
+
+		doc.setFontSize(11);
+		doc.setFont("helvetica", "normal");
+		let y = 92;
+		Object.entries(tipoContador).forEach(([tipo, cantidad]) => {
+		  doc.text(`• ${tipo}: ${cantidad}`, 25, y);
+		  y += 7;
+		  if (y > 270) {
+			doc.addPage();
+			y = 20;
+		  }
+		});
+
+		// Pie de página
+		doc.setFontSize(9);
+		doc.setTextColor(120);
+		doc.text("Generado automáticamente por el sistema de reportes del Geoportal Azuay", 20, 285);
+
+		doc.save("Resumen_Reportes_Azuay.pdf");
+
+	  } catch (e) {
+		console.error("Error al generar PDF:", e);
+		alert("❌ No se pudo generar el PDF.");
+	  }
+	}
+
+
+	
+	
+	
+    
+// ===========================================
+// SECCIÓN 12: GESTIÓN DE REPORTES (MEJORADA)
+// ===========================================
+
+	function iniciarReporte() {
+	  const modal = document.getElementById('reportModal');
+	  modal.style.display = 'flex';
+	  modal.querySelector('p').textContent = 'Obteniendo su ubicación actual...';
+
+	  // Limpiar formulario
+	  document.getElementById('reportForm').reset();
+	  document.getElementById('reportLat').value = '';
+	  document.getElementById('reportLng').value = '';
+	  document.getElementById('otrosDiv').style.display = 'none';
+	  
+	  navigator.geolocation.getCurrentPosition(
+		pos => {
+		  reportLatLng = L.latLng(pos.coords.latitude, pos.coords.longitude);
+		  modal.querySelector('p').textContent = `Ubicación detectada: ${reportLatLng.lat.toFixed(5)}, ${reportLatLng.lng.toFixed(5)}`;
+		  // Llenar los campos ocultos
+		  document.getElementById('reportLat').value = reportLatLng.lat;
+		  document.getElementById('reportLng').value = reportLatLng.lng;
+		},
+		err => {
+		  console.error('Error de geolocalización:', err);
+		  modal.querySelector('p').textContent = 'No se pudo obtener su ubicación. Haga clic en el mapa para seleccionar manualmente.';
+		  
+		  // Agregar listener para selección manual en el mapa
+		  map.once('click', function(e) {
+			reportLatLng = e.latlng;
+			modal.querySelector('p').textContent = `Ubicación seleccionada: ${reportLatLng.lat.toFixed(5)}, ${reportLatLng.lng.toFixed(5)}`;
+			document.getElementById('reportLat').value = reportLatLng.lat;
+			document.getElementById('reportLng').value = reportLatLng.lng;
+		  });
+		},
+		{
+		  enableHighAccuracy: true,
+		  timeout: 10000,
+		  maximumAge: 60000
+		}
+	  );
+	}
+
+	function cancelarReporte() {
+	  document.getElementById('reportModal').style.display = 'none';
+	  reportLatLng = null;
+	  // Remover cualquier listener de click del mapa
+	  map.off('click');
+	}
+
+	async function enviarReporte(e) {
+	  e.preventDefault();
+	  
+	  // Validaciones más robustas
+	  if (!reportLatLng) {
+		alert('Por favor seleccione una ubicación en el mapa o active la geolocalización');
+		return;
+	  }
+	  
+	  const tipoIncidente = document.getElementById('reportTipo').value;
+	  const descripcion = document.getElementById('reportDescripcion').value.trim();
+	  const gravedad = document.getElementById('reportGravedad').value;
+	  const bufferRadius = document.getElementById('reportBuffer').value;
+	  
+	  if (!tipoIncidente || !descripcion || !gravedad || !bufferRadius) {
+		alert('Por favor complete todos los campos obligatorios');
+		return;
+	  }
+	  
+	  // Preparar contacto de manera más robusta
+	  let contacto = null;
+	  const contactoTexto = document.getElementById('reportContacto').value.trim();
+	  
+	  if (contactoTexto.length > 0) {
+		if (contactoTexto.includes('@')) {
+		  contacto = { email: contactoTexto };
+		} else {
+		  contacto = { nombre: contactoTexto };
+		}
+	  }
+	  
+	  // Preparar otros_detalle
+	  let otrosDetalle = null;
+	  if (tipoIncidente === 'Otros') {
+		otrosDetalle = document.getElementById('reportOtros').value.trim();
+		if (!otrosDetalle) {
+		  alert('Por favor especifique el tipo de incidente en "Otros"');
+		  return;
+		}
+	  }
+	  
+	  // Crear el payload con formato correcto para PostGIS
+	  const payload = {
+		fecha_reporte: new Date().toISOString(),
+		//usuario_id: null,
+		tipo_incidente: tipoIncidente,
+		otros_detalle: otrosDetalle,
+		geom: `POINT(${reportLatLng.lng} ${reportLatLng.lat})`,
+		buffer_radius: parseInt(bufferRadius, 10),
+		gravedad: parseInt(gravedad, 10),
+		descripcion: descripcion,
+		contacto: contacto,
+		visibilidad: 'publico',
+		estado: 'pendiente'
+	  };
+	  
+	  console.log('Payload a enviar:', payload);
+	  
+	  try {
+		// Mostrar indicador de carga
+		const submitBtn = document.querySelector('#reportForm button[type="submit"]');
+		const originalText = submitBtn.textContent;
+		submitBtn.textContent = 'Enviando...';
+		submitBtn.disabled = true;
+		
+		const res = await fetch(`${URL}/rest/v1/reportes_usuario`, {
+		  method: 'POST',
+		  headers: {
+			'Content-Type': 'application/json',
+			'apikey': KEY,
+			'Authorization': `Bearer ${KEY}`,
+			'Prefer': 'return=minimal'
+		  },
+		  body: JSON.stringify(payload)
+		});
+		
+		console.log('Respuesta del servidor:', res.status, res.statusText);
+		
+		if (res.ok) {
+		  document.getElementById('reportModal').style.display = 'none';
+		  reportLatLng = null;
+		  document.getElementById('reportForm').reset();
+
+		  // Mostrar notificación flotante
+		  const notif = document.getElementById('notificacionExito');
+		  notif.style.display = 'block';
+
+		  // Ocultarla después de 2 segundos
+		  setTimeout(() => {
+			notif.style.display = 'none';
+		  }, 2000);
+		} else {
+		  // Obtener detalles del error
+		  const errorData = await res.text();
+		  console.error('Error completo:', errorData);
+		  
+		  let errorMessage = 'Error al crear reporte';
+		  
+		  try {
+			const errorJson = JSON.parse(errorData);
+			if (errorJson.message) {
+			  errorMessage = `Error: ${errorJson.message}`;
+			} else if (errorJson.hint) {
+			  errorMessage = `Error: ${errorJson.hint}`;
+			}
+		  } catch (e) {
+			// Si no se puede parsear como JSON, usar el texto completo
+			errorMessage = `Error: ${errorData}`;
+		  }
+		  
+		  alert(errorMessage);
+		}
+		
+	  } catch (error) {
+		console.error('Error de red:', error);
+		alert('Error de conexión. Verifique su conexión a internet e intente nuevamente.');
+	  } finally {
+		// Restaurar botón
+		const submitBtn = document.querySelector('#reportForm button[type="submit"]');
+		submitBtn.textContent = originalText;
+		submitBtn.disabled = false;
+	  }
+	}
+
+	function manejarTipoIncidente(e) {
+	  const otrosDiv = document.getElementById('otrosDiv');
+	  const otrosInput = document.getElementById('reportOtros');
+	  
+	  if (e.target.value === 'Otros') {
+		otrosDiv.style.display = 'block';
+		otrosInput.required = true;
+	  } else {
+		otrosDiv.style.display = 'none';
+		otrosInput.required = false;
+		otrosInput.value = '';
+	  }
+	}
+
+	// Función auxiliar para validar el formato de email
+	function validarEmail(email) {
+	  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+	  return re.test(email);
+	}
+
+	// Función para agregar validación en tiempo real
+	function agregarValidacionTiempoReal() {
+	  // Validar email en tiempo real
+	  document.getElementById('reportContacto').addEventListener('input', function(e) {
+		const valor = e.target.value.trim();
+		if (valor.length > 0 && valor.includes('@') && !validarEmail(valor)) {
+		  e.target.style.borderColor = 'red';
+		  e.target.title = 'Formato de email inválido';
+		} else {
+		  e.target.style.borderColor = '';
+		  e.target.title = '';
+		}
+	  });
+	  
+	  // Validar descripción mínima
+	  document.getElementById('reportDescripcion').addEventListener('input', function(e) {
+		if (e.target.value.trim().length < 10) {
+		  e.target.style.borderColor = 'orange';
+		  e.target.title = 'La descripción debe tener al menos 10 caracteres';
+		} else {
+		  e.target.style.borderColor = '';
+		  e.target.title = '';
+		}
+	  });
+	}
+
+    // ===========================================
+    // SECCIÓN 13: INICIALIZACIÓN Y EVENT LISTENERS
+    // ===========================================
+    
+    document.addEventListener('DOMContentLoaded', () => {
+      // Inicializar mapa y cargar tablas
+      initMap();
+      listarTablas();
+      cargarCantones();
+      agregarValidacionTiempoReal();
+      
+      // Event listeners para botones principales
+      document.getElementById('btnUpdate').onclick = updateLayers;
+      document.getElementById('clearUI').onclick = clearUI;
+      document.getElementById('btnReport').onclick = iniciarReporte;
+      
+      // Event listeners para modal de reportes
+      document.getElementById('cancelReport').onclick = cancelarReporte;
+      document.getElementById('reportForm').onsubmit = enviarReporte;
+      document.getElementById('reportTipo').onchange = manejarTipoIncidente;
+      
+      // Filtros
+      // Filtros solo se aplican al hacer clic en el botón
+	  document.getElementById('btnFiltro').addEventListener('click', aplicarFiltroEspacial);
+	  
+	  // Resumen en pantalla y PDF
+	  document.getElementById('btnResumenAlertas').onclick = mostrarResumenAlertas;
+	  document.getElementById('btnGenerarPDF').onclick = generarPDFResumen;
+    });
+	
+	// ===========================================
+	// SECCIÓN 14: FILTRO POR CANTÓN Y CAPA
+	// ===========================================
+	
+	  // Función para simplificar geometría
+	  function simplificarGeometria(geojson, precision = 4) {
+		if (!geojson) return null;
+		
+		const redondear = (coord) => {
+		  return [
+			parseFloat(coord[0].toFixed(precision)),
+			parseFloat(coord[1].toFixed(precision))
+		  ];
+		};
+
+		if (geojson.type === 'Polygon') {
+		  return {
+			type: 'Polygon',
+			coordinates: geojson.coordinates.map(anillo => 
+			  anillo.map(redondear)
+			)
+		  };
+		}
+		
+		return geojson;
+	  }
+		
+	// Función para crear WKT compacto
+	  function crearWKTCompacto(geojson) {
+		if (!geojson) return null;
+		
+		if (geojson.type === 'Polygon') {
+		  const coords = geojson.coordinates[0];
+		  const puntos = coords.map(coord => `${coord[0]} ${coord[1]}`).join(',');
+		  return `POLYGON((${puntos}))`;
+		} 
+		
+		return null;
+	  }
+    
+    // Función mejorada para convertir GeoJSON a WKT
+    function convertirGeoJSONaWKT(geojson) {
+      if (!geojson) return null;
+      
+      try {
+        if (geojson.type === 'Polygon') {
+          const coords = geojson.coordinates[0];
+          const puntos = coords.map(coord => `${coord[0]} ${coord[1]}`).join(', ');
+          return `POLYGON((${puntos}))`;
+        } 
+        else if (geojson.type === 'MultiPolygon') {
+          const polygons = geojson.coordinates.map(polygon => {
+            const coords = polygon[0];
+            const puntos = coords.map(coord => `${coord[0]} ${coord[1]}`).join(', ');
+            return `((${puntos}))`;
+          }).join(', ');
+          return `MULTIPOLYGON(${polygons})`;
+        }
+        else if (geojson.type === 'Point') {
+          return `POINT(${geojson.coordinates[0]} ${geojson.coordinates[1]})`;
+        }
+        else if (geojson.type === 'LineString') {
+          const puntos = geojson.coordinates.map(coord => `${coord[0]} ${coord[1]}`).join(', ');
+          return `LINESTRING(${puntos})`;
+        }
+        
+        console.warn('Tipo de geometría no soportado:', geojson.type);
+        return null;
+      } catch (error) {
+        console.error('Error convirtiendo GeoJSON a WKT:', error);
+        return null;
+      }
+    }
+    
+    // Función para cargar cantones
+    async function cargarCantones() {
+      try {
+        const res = await fetch(`${URL}/rest/v1/lim_cantonal?select=gid,dpa_descan,geom`, {
+          headers: {
+            apikey: KEY,
+            Authorization: `Bearer ${KEY}`
+          }
+        });
+
+        const datos = await res.json();
+        const select = document.getElementById('filtroCanton');
+        
+        // Limpiar select
+        select.innerHTML = '<option value="">-- Mostrar todos --</option>';
+        
+        // Guardar geometrías en un objeto global
+        window._cantonGeometries = {};
+        
+        datos.forEach(canton => {
+          const opt = document.createElement('option');
+          opt.value = canton.gid;
+          opt.textContent = canton.dpa_descan;
+          select.appendChild(opt);
+
+          // Guardar geometría
+          window._cantonGeometries[canton.gid] = canton.geom;
+        });
+      } catch (error) {
+        console.error("Error al cargar cantones:", error);
+      }
+    }
+    
+     // Función principal de filtrado espacial (mejorada)
+	async function aplicarFiltroEspacial() {
+	  const cantonId = document.getElementById('filtroCanton').value;
+	  const capa = document.getElementById('filtroCapa').value;
+
+	  // Limpiar capa anterior
+	  featureGroup.clearLayers();
+	  const legendDiv = document.querySelector('.legend');
+	  legendDiv.innerHTML = '';
+	  legendDiv.style.display = 'none';
+
+	  // Si no se ha seleccionado capa, solo dibuja el contorno
+	  if (!capa) {
+		if (cantonId && window._cantonGeometries && window._cantonGeometries[cantonId]) {
+		  const contornoCanton = L.geoJSON(window._cantonGeometries[cantonId], {
+			style: {
+			  color: "#fb923c",
+			  weight: 3,
+			  fillOpacity: 0.1
+			}
+		  }).addTo(featureGroup);
+		  map.fitBounds(contornoCanton.getBounds());
+		}
+		return;
+	  }
+
+	  try {
+		const nombreCanton = document.querySelector(`#filtroCanton option[value="${cantonId}"]`)?.textContent;
+
+		if (!nombreCanton || nombreCanton === "-- Mostrar todos --") {
+		  alert("⚠️ Seleccione un CANTÓN para aplicar el filtro.");
+		  return;
+		}
+
+		// Capas que requieren recorte geométrico
+		const capasConRecorte = ['suscep_desliz', 'suscep_inundaciones'];
+
+		// Elegir función RPC según la capa
+		const funcionRPC = capasConRecorte.includes(capa)
+		  ? 'filtrar_y_recortar_por_nombre_canton'
+		  : 'filtrar_por_nombre_canton';
+
+		const url = `${URL}/rest/v1/rpc/${funcionRPC}`;
+
+		const payload = {
+		  tabla_nombre: capa,
+		  nombre_canton: nombreCanton
+		};
+
+		const res = await fetch(url, {
+		  method: 'POST',
+		  headers: {
+			'Content-Type': 'application/json',
+			apikey: KEY,
+			Authorization: `Bearer ${KEY}`
+		  },
+		  body: JSON.stringify(payload)
+		});
+
+		if (!res.ok) {
+		  const errorData = await res.text();
+		  throw new Error(errorData);
+		}
+		const datos = await res.json();
+
+		// Mostrar capa filtrada
+		mostrarCapaFiltrada(datos, capa);
+
+		// Mostrar contorno del cantón
+		if (window._cantonGeometries && window._cantonGeometries[cantonId]) {
+		  const contorno = L.geoJSON(window._cantonGeometries[cantonId], {
+			style: {
+			  color: "#000000", // negro
+			  weight: 3,
+			  fillOpacity: 0
+			}
+		  }).addTo(featureGroup);
+		  map.fitBounds(contorno.getBounds());
+		}
+	  } catch (error) {
+		console.error('Error en filtro por nombre de cantón:', error);
+		alert(`Error al aplicar filtro: ${error.message}`);
+	  }
+	}
+    
+    // Función para mostrar la capa filtrada
+    function mostrarCapaFiltrada(datos, capa) {
+      if (!datos || datos.length === 0) {
+        alert("No se encontraron resultados para esta combinación de filtros");
+        return;
+      }
+      mostrarNotificacionGeneral("✅ Filtro exitoso", "#2563eb");
+	  
+      const color = COLORS[0]; // Usar primer color de la paleta
+      const legendDiv = document.querySelector('.legend');
+      
+      // Crear capa GeoJSON
+      const layer = L.geoJSON({
+        type: 'FeatureCollection',
+        features: datos.map(item => ({
+          type: 'Feature',
+          properties: item,
+          geometry: item.geom
+        }))
+      }, {
+        pane: 'polygonPane',
+        style: {
+          color: color,
+          weight: 2,
+          fillOpacity: 0.2
+        },
+        pointToLayer: (feat, latlng) => L.circleMarker(latlng, {
+          radius: 6,
+          fillColor: color,
+          color: '#000',
+          weight: 1,
+          fillOpacity: 0.8,
+          pane: 'markerPane'
+        }),
+        onEachFeature: (feat, lyr) => {
+          const html = generarPopupHTML(feat.properties, capa);
+          lyr.bindPopup(html);
+        }
+      }).addTo(featureGroup);
+      
+      // Traer marcadores al frente
+      layer.eachLayer(l => {
+        if (l instanceof L.CircleMarker) l.bringToFront();
+      });
+      
+      // Agregar elemento a la leyenda
+      agregarElementoLeyenda(legendDiv, color, capa);
+      legendDiv.style.display = 'block';
+      
+      // Ajustar vista
+      // map.fitBounds(featureGroup.getBounds());
+    }
+	
+	function mostrarNotificacionGeneral(texto, color = '#3b82f6') {
+	  const notif = document.getElementById('notificacionGeneral');
+	  notif.textContent = texto;
+	  notif.style.background = color;
+	  notif.style.display = 'block';
+
+	  setTimeout(() => {
+		notif.style.display = 'none';
+	  }, 2000);
+	}
+  </script>
+  
+<!-- Notificación flotante -->
+<div id="notificacionExito" style="display:none; position:fixed; top:20px; left:50%; transform:translateX(-50%);
+background:#2563eb; color:white; padding:12px 24px; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.2);
+z-index:3000; font-size:16px;">
+  ✅ Reporte enviado correctamente
+</div>  
+
+<!-- Notificación general reutilizable -->
+<div id="notificacionGeneral" style="display:none; position:fixed; top:20px; left:50%; transform:translateX(-50%);
+background:#2563eb; color:white; padding:12px 24px; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.2);
+z-index:3000; font-size:16px;">
+</div>
+
+<script>
+  // Redefinir alert() para personalizar el encabezado
+  window.alert = function(message) {
+    const alertBox = document.createElement('div');
+    alertBox.style.position = 'fixed';
+    alertBox.style.top = '20px';
+    alertBox.style.left = '50%';
+    alertBox.style.transform = 'translateX(-50%)';
+    alertBox.style.background = '#1e293b'; // fondo gris oscuro
+    alertBox.style.color = '#fff';
+    alertBox.style.padding = '20px';
+    alertBox.style.borderRadius = '10px';
+    alertBox.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+    alertBox.style.zIndex = '5000';
+    alertBox.style.maxWidth = '400px';
+    alertBox.style.textAlign = 'left';
+
+    const title = document.createElement('strong');
+    title.textContent = 'Información de la capa seleccionada';
+    title.style.display = 'block';
+    title.style.marginBottom = '10px';
+
+    const content = document.createElement('div');
+    content.textContent = message;
+
+    const button = document.createElement('button');
+    button.textContent = 'Aceptar';
+    button.style.marginTop = '10px';
+    button.style.background = '#3b82f6';
+    button.style.color = '#fff';
+    button.style.border = 'none';
+    button.style.padding = '8px 16px';
+    button.style.borderRadius = '6px';
+    button.style.cursor = 'pointer';
+    button.style.float = 'right';
+
+    button.onclick = () => alertBox.remove();
+
+    alertBox.append(title, content, button);
+    document.body.appendChild(alertBox);
+  };
+</script>
+
+
+<!-- Modal: Resumen de Alertas -->
+<div id="modalResumenAlertas" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background-color:rgba(0,0,0,0.4); z-index:3000;">
+  <div style="background:white; width:90%; max-width:400px; margin:5% auto; padding:24px; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,0.25); font-family:sans-serif;">
+    <h2 style="font-size:1.25rem; font-weight:bold; margin-bottom:1rem;">📋 Resumen de Reportes en la Provincia</h2>
+    <ul id="contenidoResumen" style="font-size:1rem; color:#1f2937; padding-left:1.2rem;">
+      <li>🔄 Cargando datos...</li>
+    </ul>
+    <div style="text-align:right; margin-top:1.5rem;">
+      <button onclick="document.getElementById('modalResumenAlertas').style.display='none'" style="background-color:#2563eb; color:white; border:none; padding:8px 16px; border-radius:8px;">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal "Acerca de" -->
+<div id="modalAcercaDe">
+  <div class="contenido">
+    <h2>🗺️ Acerca del Geoportal</h2>
+    <p>
+      Este geoportal permite visualizar y analizar información geoespacial relevante de la provincia del Azuay, Ecuador. Se alimenta desde una base de datos PostGIS conectada por Supabase, integrando capas temáticas, filtros espaciales y reportes ciudadanos.
+    </p>
+    <ul id="reporteEstadistico">
+    </ul>
+    <div style="text-align: right; margin-top: 1.5rem;">
+	  <button onclick="cerrarAcercaDe()" class="cerrarBoton">Cerrar</button>
+	</div>
+  </div>
+</div>
+
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+</body>
+</html>
